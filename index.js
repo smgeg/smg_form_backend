@@ -31,6 +31,90 @@ app.get("/api/courses", async (req, res) => {
   }
 });
 
+app.get("/api/names/:code", async (req, res) => {
+  try {
+    const { code } = req.params;
+
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "Names!A:I",
+    });
+    // res.json(result.data.values);
+
+    const timesRes = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "Times!A:I",
+    });
+    const timesData = timesRes.data.values;
+    const data = result.data.values;
+
+    // NAMES SHEET
+    const codeColumnIndex = 1; // Replace with the desired column index (0-based)
+
+    // TIMES SHEET
+    const programColumnIndex = 1; // Replace with the desired column index (0-based)
+    const groupColumnIndex = 4; // Replace with the desired column index (0-based)
+
+    const searchValue = code; // Replace with the desired value to search for
+
+    const rowData = data.find((row) => row[codeColumnIndex] === searchValue);
+    const rowIndex = data.indexOf(rowData);
+
+    const rowTime = timesData.find(
+      (row) =>
+        row[programColumnIndex] === rowData[5] &&
+        row[groupColumnIndex] === rowData[6]
+    );
+    if (rowData && rowTime) {
+      console.log(rowData);
+      console.log(rowTime);
+
+      res.json({
+        rowId: rowIndex + 1,
+        code: rowData[1],
+        name: rowData[2],
+        dept: rowData[3],
+        company: rowData[4],
+        program: rowData[5],
+        group: rowData[6],
+        mobile: rowData[7],
+        email: rowData[8],
+        startDate: rowTime[5],
+        endDate: rowTime[6],
+        days: rowTime[7],
+        time: rowTime[8],
+      });
+    } else {
+      res.json({ error: "Error" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error fetching data from Google Sheets");
+  }
+});
+
+app.patch("/api/names/:code", async (req, res) => {
+  try {
+    const { code } = req.params;
+    const { mobile, email } = req.body;
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "Names!A:F",
+    });
+    // res.json(result.data.values);
+
+    const data = result.data.values;
+
+    const columnIndex = 1; // Replace with the desired column index (0-based)
+    const searchValue = code; // Replace with the desired value to search for
+
+    const rowData = data.find((row) => row[columnIndex] === searchValue);
+    res.json(rowData);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error fetching data from Google Sheets");
+  }
+});
 app.post("/api/form", async (req, res) => {
   const { name, phone, email, date } = req.body;
   try {
@@ -62,6 +146,15 @@ app.put("/api/data/:rowId", async (req, res) => {
       },
     });
     res.json(result.data);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error updating data in Google Sheets");
+  }
+});
+
+app.get("/api", async (req, res) => {
+  try {
+    res.send("Hello !!!");
   } catch (error) {
     console.error(error);
     res.status(500).send("Error updating data in Google Sheets");
