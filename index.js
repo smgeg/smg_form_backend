@@ -96,20 +96,27 @@ app.get("/api/names/:code", async (req, res) => {
 app.patch("/api/names/:code", async (req, res) => {
   try {
     const { code } = req.params;
-    const { mobile, email } = req.body;
-    const result = await sheets.spreadsheets.values.get({
+    const { mobile, email, rowId } = req.body;
+    // Replace with the row number you want to update
+    const range = `Names!H${rowId}:I${rowId}`;
+
+    // Prepare the updated values for specific columns
+    const values = [
+      [
+        mobile, // 7 Mobile
+        email,
+      ], // 8 Email
+    ];
+    // Update the row data with PATCH
+    const response = await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: "Names!A:F",
+      range,
+      valueInputOption: "USER_ENTERED", // Optional, determines how the input values are interpreted
+      resource: { values },
     });
-    // res.json(result.data.values);
 
-    const data = result.data.values;
-
-    const columnIndex = 1; // Replace with the desired column index (0-based)
-    const searchValue = code; // Replace with the desired value to search for
-
-    const rowData = data.find((row) => row[columnIndex] === searchValue);
-    res.json(rowData);
+    console.log("Row data updated with PATCH:", response.data);
+    res.status(200).send("Row data updated");
   } catch (error) {
     console.error(error);
     res.status(500).send("Error fetching data from Google Sheets");
