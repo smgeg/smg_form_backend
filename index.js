@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const format = require("date-format");
+const dayjs  = require("dayjs");
 const app = express();
 const port = process.env.PORT || 3030;
 app.use(cors());
@@ -30,6 +31,37 @@ app.get("/api/courses", async (req, res) => {
     res.status(500).send("Error fetching data from Google Sheets");
   }
 });
+
+// --------------------------------------------- NAMES SHEEt -------------------------------------------------//
+
+async function getRowIdFromNames(codeValue){
+  const codeColumnIndex = 1; // Replace with the desired column index (0-based)
+
+  const result = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: "Names!A:I",
+  });
+  const data = result.data.values;
+
+  const rowData = data.find((row) => row[codeColumnIndex] === codeValue);
+  const rowIndex = data.indexOf(rowData);
+  return rowIndex+1;
+}
+
+async function getRowIdFromEvaluation(codeValue){
+  const codeColumnIndex = 1; // Replace with the desired column index (0-based)
+
+  const result = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: "Evaluation!A:U",
+  });
+  const data = result.data.values;
+
+  const rowData = data.find((row) => row[codeColumnIndex] === codeValue);
+  const rowIndex = data.indexOf(rowData);
+  return rowIndex + 1;
+}
+
 
 app.get("/api/names/:code", async (req, res) => {
   try {
@@ -122,6 +154,104 @@ app.patch("/api/names/:code", async (req, res) => {
     res.status(500).send("Error fetching data from Google Sheets");
   }
 });
+
+// --------------------------------------------- END NAMES SHEET -------------------------------------------------//
+
+
+// --------------------------------------------- START EVALUATION SHEET -------------------------------------------------//
+
+
+app.get("/api/survey/:code", async (req, res) => {
+  try {
+    const { code } = req.params;
+
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "Evaluation!A:U",
+    });
+ 
+
+    const data = result.data.values;
+
+    const codeColumnIndex = 1; // Replace with the desired column index (0-based)
+
+
+    const searchValue = code; // Replace with the desired value to search for
+
+    const rowData = data.find((row) => row[codeColumnIndex] === searchValue);
+    const rowIndex = data.indexOf(rowData);
+
+   
+    if (rowData ) {
+      console.log(rowData);
+    
+
+      res.json({
+        rowId: rowIndex + 1,
+        code:rowData[1],
+        name:rowData[2],
+        date:rowData[3],
+        qa1: rowData[4],
+        qa2: rowData[5],
+        qa3: rowData[6],
+        qa4: rowData[7],
+        qa5: rowData[8],
+        qa6: rowData[9],
+        qa7: rowData[10] ,
+        qa9: rowData[11],
+        qa10: rowData[12],
+        qa11: rowData[13],
+        qa12: rowData[14],
+        qa13: rowData[15],
+        qa14: rowData[16],
+        qa15: rowData[17],
+        qa16: rowData[18],
+        qa17: rowData[19],
+      });
+    } else {
+      res.json({ error: "Error" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error fetching data from Google Sheets");
+  }
+});
+
+
+app.patch("/api/survey/:code", async (req, res) => {
+  try {
+    const { code } = req.params;
+    const { qa1,qa2,qa3,qa4,qa5,qa6,qa7,qa8,qa9,qa10,qa11,qa12,qa13,qa14,qa15,qa16,qa17 } = req.body;
+    console.log(await getRowIdFromEvaluation(code));
+    const rowId = await getRowIdFromEvaluation(code);
+    // Replace with the row number you want to update
+    const range = `Evaluation!D${rowId}:U${rowId}`;
+
+    // Prepare the updated values for specific columns
+    const values = [
+      [
+       dayjs().format("DD-MM-YYYY hh:mm A"), qa1,qa2,qa3,qa4,qa5,qa6,qa7,qa8,qa9,qa10,qa11,qa12,qa13,qa14,qa15,qa16,qa17
+      ], 
+    ];
+    // Update the row data with PATCH
+    const response = await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range,
+      valueInputOption: "USER_ENTERED", // Optional, determines how the input values are interpreted
+      resource: { values },
+    });
+
+    console.log("Row data updated with PATCH:", response.data);
+    res.status(200).send("Row data updated");
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error fetching data from Google Sheets");
+  }
+});
+
+// --------------------------------------------- END EVALUATION SHEET -------------------------------------------------//
+
+
 app.post("/api/form", async (req, res) => {
   const { name, phone, email, date } = req.body;
   try {
